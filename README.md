@@ -1,5 +1,7 @@
 # SchedulerAI - AI-Powered University Timetable Generator & Copilot
 
+> ### 🔗 **[Live Demo: Try SchedulerAI Live in the Browser!](https://shahid-ayub.github.io/ai-timetable-generator/)**
+
 SchedulerAI is a modern, interactive client-side web application designed to automate, optimize, and manage university course scheduling. It features a constraint-satisfaction scheduling solver, real-time conflict audits, drag-and-drop schedule editing, and an advanced **AI Copilot** capable of parsing schedule documents and executing scheduling commands.
 
 ---
