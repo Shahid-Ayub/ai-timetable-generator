@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>University Timetable AI Planner & Scheduler</title>
+  <!-- Plus Jakarta Sans Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="index.css?v=1.3">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- html2pdf library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon-wrapper">
+          <i data-lucide="grid-3x3" class="brand-icon"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">Scheduler<span class="brand-accent">AI</span></h1>
+          <span class="brand-subtitle">University Planner</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="dashboard" id="btn-nav-dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-btn" data-view="teachers" id="btn-nav-teachers">
+          <i data-lucide="users"></i>
+          <span>Instructors</span>
+        </button>
+        <button class="nav-btn" data-view="courses" id="btn-nav-courses">
+          <i data-lucide="book-open"></i>
+          <span>Courses</span>
+        </button>
+        <button class="nav-btn" data-view="rooms" id="btn-nav-rooms">
+          <i data-lucide="door-open"></i>
+          <span>Rooms</span>
+        </button>
+        <button class="nav-btn" data-view="sections" id="btn-nav-sections">
+          <i data-lucide="graduation-cap"></i>
+          <span>Student Batches</span>
+        </button>
+        <button class="nav-btn" data-view="importer" id="btn-nav-importer">
+          <i data-lucide="file-up"></i>
+          <span>Import Timetable</span>
+          <span class="badge badge-indigo">New</span>
+        </button>
+        <button class="nav-btn" data-view="schedule" id="btn-nav-schedule">
+          <i data-lucide="calendar"></i>
+          <span>Timetable Grid</span>
+        </button>
+        <button class="nav-btn" data-view="logs" id="btn-nav-logs">
+          <i data-lucide="alert-triangle"></i>
+          <span>Conflict Audits</span>
+          <span class="badge badge-danger" id="badge-conflict-count" style="display: none;">0</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button class="footer-btn" id="btn-load-presets">
+          <i data-lucide="refresh-cw"></i>
+          <span>Reload Presets</span>
+        </button>
+        <button class="footer-btn text-danger" id="btn-clear-db">
+          <i data-lucide="trash-2"></i>
+          <span>Clear All Data</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h2 class="page-title" id="page-title-text">Dashboard Summary</h2>
+          <p class="page-subtitle" id="page-subtitle-text">System performance and coordination overview</p>
+        </div>
+        <div class="topbar-right">
+          <div class="schedule-status-header">
+            <span class="status-indicator-dot" id="header-status-dot"></span>
+            <span class="status-indicator-text" id="header-status-text">No active schedule</span>
+          </div>
+          <button class="btn-theme-toggle" id="btn-theme-toggle" title="Toggle Theme">
+            <i data-lucide="moon"></i>
+          </button>
+          <button class="btn btn-primary" id="btn-header-generate">
+            <i data-lucide="sparkles"></i>
+            <span>Generate Schedule</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Wrapper -->
+      <div class="view-viewport">
+        
+        <!-- ================= VIEW: DASHBOARD ================= -->
+        <section class="view-panel active" id="view-dashboard">
+          
+          <!-- Statistics Grid -->
+          <div class="stats-grid">
+            <div class="stats-card">
+              <div class="stats-icon text-indigo"><i data-lucide="users"></i></div>
+              <div class="stats-info">
+                <span class="stats-value" id="stat-teachers-count">0</span>
+                <span class="stats-label">Registered Instructors</span>
+              </div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-icon text-violet"><i data-lucide="book-open"></i></div>
+              <div class="stats-info">
+                <span class="stats-value" id="stat-courses-count">0</span>
+                <span class="stats-label">Active Courses</span>
+              </div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-icon text-emerald"><i data-lucide="door-open"></i></div>
+              <div class="stats-info">
+                <span class="stats-value" id="stat-rooms-count">0</span>
+                <span class="stats-label">Available Rooms</span>
+              </div>
+            </div>
+            <div class="stats-card">
+              <div class="stats-icon text-amber"><i data-lucide="graduation-cap"></i></div>
+              <div class="stats-info">
+                <span class="stats-value" id="stat-sections-count">0</span>
+                <span class="stats-label">Student Batches</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Solver Status Panel & Detailed Metrics -->
+          <div class="dashboard-grid">
+            
+            <div class="card card-hero">
+              <div class="card-header">
+                <h3>Scheduling Engine</h3>
+                <div class="engine-badge" id="engine-badge-status">Idle</div>
+              </div>
+              <div class="card-body">
+                <div id="engine-idle-state" class="engine-state">
+                  <div class="scheduler-intro">
+                    <div class="intro-graphic"><i data-lucide="cpu" class="spinning-icon"></i></div>
+                    <h4>AI Genetic Scheduler</h4>
+                    <p>The Genetic Algorithm models the schedule search space to solve double-bookings, teacher availabilities, and rooms capacities while optimizing for minimal gaps in timetables.</p>
+                    <button class="btn btn-lg btn-indigo" id="btn-dashboard-start-generate">
+                      <i data-lucide="sparkles"></i> Run Auto Scheduler
+                    </button>
+                  </div>
+                </div>
+
+                <div id="engine-running-state" class="engine-state" style="display: none;">
+                  <div class="progress-info">
+                    <div class="progress-stat">
+                      <span class="progress-stat-label">Generation</span>
+                      <span class="progress-stat-value" id="run-stat-generation">0/1200</span>
+                    </div>
+                    <div class="progress-stat">
+                      <span class="progress-stat-label">Hard Conflicts</span>
+                      <span class="progress-stat-value text-danger" id="run-stat-hard">0</span>
+                    </div>
+                    <div class="progress-stat">
+                      <span class="progress-stat-label">Soft Conflicts</span>
+                      <span class="progress-stat-value text-warning" id="run-stat-soft">0</span>
+                    </div>
+                  </div>
+                  
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="run-progress-fill" style="width: 0%;"></div>
+                  </div>
+                  
+                  <div class="run-message">
+                    <i data-lucide="loader" class="animate-spin text-indigo"></i>
+                    <span id="run-status-message">Generating timetables. Evaluating chromosomes...</span>
+                  </div>
+                  
+                  <button class="btn btn-outline-danger btn-block" id="btn-dashboard-stop-generate">
+                    <i data-lucide="square"></i> Abort Solver
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3>Active Timetable Summary</h3>
+                <button class="btn btn-sm btn-outline-indigo" id="btn-dashboard-view-schedule" style="display: none;">
+                  <i data-lucide="calendar"></i> View Calendar
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="no-active-schedule-card" class="empty-state">
+                  <i data-lucide="calendar-x" class="empty-icon"></i>
+                  <p>No active timetable generated yet. Run the solver or import a previous timetable to get started.</p>
+                </div>
+                
+                <div id="active-schedule-card" style="display: none;" class="schedule-summary-details">
+                  <div class="summary-metric-row">
+                    <div class="metric-item">
+                      <span class="metric-val text-success" id="active-summary-fitness">98%</span>
+                      <span class="metric-lbl">Fitness Rating</span>
+                    </div>
+                    <div class="metric-item">
+                      <span class="metric-val" id="active-summary-sessions">0</span>
+                      <span class="metric-lbl">Class Sessions</span>
+                    </div>
+                  </div>
+                  
+                  <div class="conflicts-breakdown-list">
+                    <h4 class="section-title">Heuristics Compliance</h4>
+                    <div class="compliance-item">
+                      <span class="compliance-lbl"><i data-lucide="check" class="text-success"></i> Instructors Availability</span>
+                      <span class="compliance-val" id="comp-teacher-avail">100%</span>
+                    </div>
+                    <div class="compliance-item">
+                      <span class="compliance-lbl"><i data-lucide="check" class="text-success"></i> Room Capacities</span>
+                      <span class="compliance-val" id="comp-room-cap">100%</span>
+                    </div>
+                    <div class="compliance-item">
+                      <span class="compliance-lbl"><i data-lucide="check" class="text-success"></i> Room Type Alignment</span>
+                      <span class="compliance-val" id="comp-room-type">100%</span>
+                    </div>
+                    <div class="compliance-item">
+                      <span class="compliance-lbl" id="icon-student-gaps"><i data-lucide="info" class="text-warning"></i> Student Class Gaps</span>
+                      <span class="compliance-val" id="comp-student-gaps">Optimal</span>
+                    </div>
+                  </div>
+                  
+                  <div class="card-actions">
+                    <button class="btn btn-indigo" id="btn-export-active-pdf" title="Export schedule as visual PDF">
+                      <i data-lucide="file-down"></i> Export PDF
+                    </button>
+                    <button class="btn btn-indigo" id="btn-export-active-csv" title="Export schedule as list of rows">
+                      <i data-lucide="list"></i> Export List
+                    </button>
+                    <button class="btn btn-indigo" id="btn-export-active-tabular-csv" title="Export schedule as tabular grid table">
+                      <i data-lucide="grid"></i> Export Grid
+                    </button>
+                    <button class="btn btn-outline-indigo" id="btn-export-active-json" title="Backup full database backup">
+                      <i data-lucide="file-json"></i> Backup JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ================= VIEW: TEACHERS ================= -->
+        <section class="view-panel" id="view-teachers">
+          <div class="panel-header-row">
+            <div class="search-bar-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" class="search-input" id="search-teachers" placeholder="Search instructors by name or email...">
+            </div>
+            <button class="btn btn-indigo" id="btn-add-teacher">
+              <i data-lucide="plus"></i> Add Instructor
+            </button>
+          </div>
+          
+          <div class="master-detail-layout">
+            <div class="list-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Max Hours/Wk</th>
+                    <th class="actions-col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body-teachers">
+                  <!-- JS filled -->
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="detail-container card" id="teacher-detail-card" style="display: none;">
+              <div class="card-header">
+                <h3 id="teacher-detail-name">Dr. Alice Smith</h3>
+                <span class="badge badge-indigo">Weekly Availability Grid</span>
+              </div>
+              <div class="card-body">
+                <p class="availability-instructions">Click on cells to toggle instructor availability. Red cells denote unavailable slots that the AI solver will strictly avoid.</p>
+                <div class="availability-grid" id="teacher-availability-grid">
+                  <!-- Grid layout JS filled -->
+                </div>
+                <div class="grid-controls">
+                  <button class="btn btn-sm btn-outline-indigo" id="btn-teacher-avail-all">Mark All Available</button>
+                  <button class="btn btn-sm btn-outline-danger" id="btn-teacher-avail-none">Mark All Unavailable</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW: COURSES ================= -->
+        <section class="view-panel" id="view-courses">
+          <div class="panel-header-row">
+            <div class="search-bar-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" class="search-input" id="search-courses" placeholder="Search courses by code or name...">
+            </div>
+            <button class="btn btn-indigo" id="btn-add-course">
+              <i data-lucide="plus"></i> Add Course
+            </button>
+          </div>
+          
+          <div class="list-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Course Title</th>
+                  <th>Weekly Classes</th>
+                  <th>Room Type Required</th>
+                  <th>Assigned Instructor</th>
+                  <th>Assigned Sections</th>
+                  <th class="actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="table-body-courses">
+                <!-- JS filled -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================= VIEW: ROOMS ================= -->
+        <section class="view-panel" id="view-rooms">
+          <div class="panel-header-row">
+            <div class="search-bar-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" class="search-input" id="search-rooms" placeholder="Search rooms by name...">
+            </div>
+            <button class="btn btn-indigo" id="btn-add-room">
+              <i data-lucide="plus"></i> Add Room
+            </button>
+          </div>
+          
+          <div class="master-detail-layout">
+            <div class="list-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Room Name</th>
+                    <th>Type</th>
+                    <th>Max Capacity</th>
+                    <th class="actions-col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body-rooms">
+                  <!-- JS filled -->
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="detail-container card" id="room-detail-card" style="display: none;">
+              <div class="card-header">
+                <h3 id="room-detail-name">Room 101</h3>
+                <span class="badge badge-indigo">Room Availability Grid</span>
+              </div>
+              <div class="card-body">
+                <p class="availability-instructions">Click on cells to toggle room availability. Red cells denote slots when the room is reserved for other campus activities.</p>
+                <div class="availability-grid" id="room-availability-grid">
+                  <!-- Grid layout JS filled -->
+                </div>
+                <div class="grid-controls">
+                  <button class="btn btn-sm btn-outline-indigo" id="btn-room-avail-all">Mark All Available</button>
+                  <button class="btn btn-sm btn-outline-danger" id="btn-room-avail-none">Mark All Unavailable</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW: SECTIONS ================= -->
+        <section class="view-panel" id="view-sections">
+          <div class="panel-header-row">
+            <div class="search-bar-wrapper">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" class="search-input" id="search-sections" placeholder="Search batches by name or program...">
+            </div>
+            <button class="btn btn-indigo" id="btn-add-section">
+              <i data-lucide="plus"></i> Add Section
+            </button>
+          </div>
+          
+          <div class="list-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Department</th>
+                  <th>Batch / Specialization</th>
+                  <th>Semester</th>
+                  <th>Intake Capacity</th>
+                  <th class="actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="table-body-sections">
+                <!-- JS filled -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================= VIEW: IMPORTER ================= -->
+        <section class="view-panel" id="view-importer">
+          <div class="importer-layout">
+            
+            <!-- Step 1: Upload Zone -->
+            <div class="card" id="importer-upload-step">
+              <div class="card-header">
+                <h3>Timetable File OCR & Parsing Importer</h3>
+                <span class="badge badge-indigo">CSV / PDF / Image</span>
+              </div>
+              <div class="card-body">
+                <div class="drop-zone" id="file-drop-zone">
+                  <div class="drop-zone-prompt">
+                    <div class="drop-icon-wrapper">
+                      <i data-lucide="file-up" class="drop-icon"></i>
+                    </div>
+                    <h4>Drag & Drop Timetable File</h4>
+                    <p class="drop-help-text">Accepts CSV spreadsheets, PDF timetable schedules, or images (PNG, JPEG, JPG) from scanned/captured documents.</p>
+                    <div class="drop-zone-divider"><span>or</span></div>
+                    <label for="importer-file-input" class="btn btn-indigo file-input-label">
+                      Browse Files
+                    </label>
+                    <input type="file" id="importer-file-input" accept=".csv,.pdf,.png,.jpg,.jpeg" style="display: none;">
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                  <label for="importer-instructions" style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block;">
+                    AI Processing Instructions (Optional)
+                  </label>
+                  <textarea id="importer-instructions" class="form-control" rows="3" 
+                    placeholder="e.g., 'Make sure CS labs are scheduled on Tuesday afternoons, and restrict Dr. Alice to mornings only.'"></textarea>
+                </div>
+
+                <div class="loader-overlay" id="importer-loader" style="display: none;">
+                  <div class="spinner-container">
+                    <div class="custom-spinner"></div>
+                    <h4 id="importer-loader-title">Initializing OCR Engine...</h4>
+                    <p id="importer-loader-subtitle">Loading transcription dependencies</p>
+                    <div class="progress-bar-container" style="max-width: 300px; margin-top: 15px; display: none;" id="ocr-progress-container">
+                      <div class="progress-bar-fill" id="ocr-progress-fill" style="width: 0%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Mapping Wizard -->
+            <div class="card" id="importer-mapping-step" style="display: none;">
+              <div class="card-header">
+                <h3>Coordinate Columns & Verify Detected Sessions</h3>
+                <div class="card-header-actions">
+                  <button class="btn btn-outline-indigo" id="btn-importer-back"><i data-lucide="arrow-left"></i> Back</button>
+                  <button class="btn btn-violet" id="btn-importer-ai-process"><i data-lucide="sparkles"></i> Process with AI Copilot</button>
+                  <button class="btn btn-indigo" id="btn-importer-save-all"><i data-lucide="save"></i> Complete Import</button>
+                </div>
+              </div>
+              
+              <div class="wizard-grid">
+                <!-- Sidebar help / file preview -->
+                <div class="wizard-sidebar card-sub">
+                  <h4>Extracted Text Content</h4>
+                  <p class="help-text">This is the raw text extracted from your document.</p>
+                  <textarea id="extracted-raw-text-preview" class="raw-preview-textarea" readonly></textarea>
+                  
+                  <h4 style="margin-top: 20px;">AI Processing Instructions</h4>
+                  <p class="help-text">Instruct the AI how to parse and adjust constraints for this schedule.</p>
+                  <textarea id="importer-instructions-step2" class="form-control" rows="4" 
+                    placeholder="e.g., 'Import this schedule, but change all computer lab sessions to Computer Lab B, and make sure Dr. Bob has no sessions on Mondays.'"></textarea>
+                </div>
+                
+                <!-- Mapping Grid -->
+                <div class="wizard-main">
+                  <div class="wizard-warning-box">
+                    <i data-lucide="info" class="text-indigo"></i>
+                    <p>We found <strong id="detected-sessions-count">0</strong> classes in the file. Align each session properties below. Missing records (like teachers, courses, or rooms) will be automatically created in the database.</p>
+                  </div>
+                  
+                  <!-- CSV Column Selector (Only visible for CSV) -->
+                  <div id="csv-column-mappings" style="display: none;" class="column-mapping-card">
+                    <h4>Map CSV Columns</h4>
+                    <div class="csv-mapping-grid">
+                      <div class="mapping-field">
+                        <label>Course Code Column</label>
+                        <select id="csv-map-course" class="form-control select-column-index"></select>
+                      </div>
+                      <div class="mapping-field">
+                        <label>Instructor Column</label>
+                        <select id="csv-map-teacher" class="form-control select-column-index"></select>
+                      </div>
+                      <div class="mapping-field">
+                        <label>Room Column</label>
+                        <select id="csv-map-room" class="form-control select-column-index"></select>
+                      </div>
+                      <div class="mapping-field">
+                        <label>Student Batch Column</label>
+                        <select id="csv-map-section" class="form-control select-column-index"></select>
+                      </div>
+                      <div class="mapping-field">
+                        <label>Day of Week Column</label>
+                        <select id="csv-map-day" class="form-control select-column-index"></select>
+                      </div>
+                      <div class="mapping-field">
+                        <label>Time Slot Column</label>
+                        <select id="csv-map-slot" class="form-control select-column-index"></select>
+                      </div>
+                    </div>
+                    <button class="btn btn-sm btn-indigo" id="btn-apply-csv-mapping" style="margin-top: 15px;">Apply CSV Layout</button>
+                  </div>
+
+                  <div class="table-scroll-container">
+                    <table class="data-table table-wizard-align">
+                      <thead>
+                        <tr>
+                          <th>Raw Text Line</th>
+                          <th>Course Code</th>
+                          <th>Instructor</th>
+                          <th>Room</th>
+                          <th>Student Batch</th>
+                          <th>Day</th>
+                          <th>Time Period</th>
+                          <th style="width: 50px;">Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody id="importer-wizard-tbody">
+                        <!-- JS Dynamic filled rows of matches -->
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <div class="wizard-actions-row">
+                    <button class="btn btn-outline-indigo" id="btn-wizard-add-row"><i data-lucide="plus"></i> Add Blank Row</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ================= VIEW: TIMETABLE GRID ================= -->
+        <section class="view-panel" id="view-schedule">
+          
+          <!-- Filters & Actions -->
+          <div class="schedule-controls-row">
+            <div class="filters-group">
+              <div class="filter-item" id="filter-dept-wrapper" style="display: none;">
+                <label for="select-schedule-dept">Department</label>
+                <select id="select-schedule-dept" class="form-control select-sm">
+                  <option value="All">All Departments</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Electrical Engineering">Electrical Engineering</option>
+                  <option value="Mechanical Engineering">Mechanical Engineering</option>
+                  <option value="Civil Engineering">Civil Engineering</option>
+                  <option value="Software Engineering">Software Engineering</option>
+                </select>
+              </div>
+
+              <div class="filter-item">
+                <label for="select-schedule-view-type">Filter By</label>
+                <select id="select-schedule-view-type" class="form-control select-sm">
+                  <option value="section">Student Batch</option>
+                  <option value="teacher">Instructor</option>
+                  <option value="room">Room</option>
+                </select>
+              </div>
+              
+              <div class="filter-item" id="filter-select-target-wrapper">
+                <label for="select-schedule-view-target" id="label-filter-target">Select Batch</label>
+                <select id="select-schedule-view-target" class="form-control select-sm">
+                  <!-- Filled dynamically -->
+                </select>
+              </div>
+            </div>
+            
+            <div class="schedule-actions-group">
+              <button class="btn btn-outline-indigo" id="btn-print-schedule" title="Print schedule or save as PDF">
+                <i data-lucide="printer"></i> Print / PDF
+              </button>
+              <button class="btn btn-outline-indigo" id="btn-export-pdf" title="Export visual grid timetable as a PDF file">
+                <i data-lucide="file-text"></i> Export Grid (PDF)
+              </button>
+              <button class="btn btn-outline-indigo" id="btn-export-csv" title="Export session list as a PDF table">
+                <i data-lucide="list"></i> Export List (PDF)
+              </button>
+              <button class="btn btn-indigo" id="btn-add-session-manual">
+                <i data-lucide="plus"></i> Add Session
+              </button>
+            </div>
+          </div>
+
+          <!-- Master Timetable Board -->
+          <div class="timetable-board-wrapper">
+            <div class="timetable-grid" id="main-timetable-grid">
+              <!-- Rendered Dynamically via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW: CONFLICT LOGS ================= -->
+        <section class="view-panel" id="view-logs">
+          <div class="card">
+            <div class="card-header">
+              <h3>Constraint Audit Panel</h3>
+              <button class="btn btn-sm btn-outline-indigo" id="btn-re-audit-schedule">
+                <i data-lucide="refresh-cw"></i> Run Audit Audit
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="audit-summary-bar">
+                <div class="audit-indicator text-success" id="audit-indicator-clean">
+                  <i data-lucide="check-circle" class="audit-indicator-icon"></i>
+                  <div>
+                    <h4>All Constraints Satisfied</h4>
+                    <p>This timetable has 0 conflicts. Ready for publication.</p>
+                  </div>
+                </div>
+                
+                <div class="audit-indicator text-danger" id="audit-indicator-dirty" style="display: none;">
+                  <i data-lucide="x-circle" class="audit-indicator-icon animate-pulse"></i>
+                  <div>
+                    <h4>Schedule Conflicts Detected (<span id="audit-conflicts-count">0</span>)</h4>
+                    <p>Review the list of clashes below and manually adjust classes or run the AI scheduler solver.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="audit-logs-section">
+                <h4 class="section-title">Hard Conflicts (Double Bookings & Blockages)</h4>
+                <div class="logs-container" id="logs-container-hard">
+                  <!-- Hard conflicts listed -->
+                </div>
+              </div>
+              
+              <div class="audit-logs-section" style="margin-top: 25px;">
+                <h4 class="section-title">Soft Optimization Warnings (Fatigue & Spacing)</h4>
+                <div class="logs-container" id="logs-container-soft">
+                  <!-- Soft warnings listed -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= DIALOGS & MODALS ================= -->
+  
+  <!-- Modal Backdrop -->
+  <div class="modal-backdrop" id="modal-backdrop" style="display: none;"></div>
+
+  <!-- Modal: Add/Edit Teacher -->
+  <div class="modal" id="modal-teacher" style="display: none;">
+    <div class="modal-header">
+      <h3 id="modal-teacher-title">Add Instructor</h3>
+      <button class="modal-close" data-modal="modal-teacher">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-teacher">
+        <input type="hidden" id="teacher-form-id">
+        <div class="form-group">
+          <label for="teacher-form-name">Full Name</label>
+          <input type="text" id="teacher-form-name" class="form-control" placeholder="Dr. Jane Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="teacher-form-email">Email Address</label>
+          <input type="email" id="teacher-form-email" class="form-control" placeholder="jane.doe@university.edu" required>
+        </div>
+        <div class="form-group">
+          <label for="teacher-form-hours">Max Teaching Hours per Week</label>
+          <input type="number" id="teacher-form-hours" class="form-control" min="2" max="40" value="12" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal="modal-teacher">Cancel</button>
+          <button type="submit" class="btn btn-indigo">Save Instructor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Room -->
+  <div class="modal" id="modal-room" style="display: none;">
+    <div class="modal-header">
+      <h3 id="modal-room-title">Add Room</h3>
+      <button class="modal-close" data-modal="modal-room">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-room">
+        <input type="hidden" id="room-form-id">
+        <div class="form-group">
+          <label for="room-form-name">Room Name/Number</label>
+          <input type="text" id="room-form-name" class="form-control" placeholder="Room 203, Lab C" required>
+        </div>
+        <div class="form-group">
+          <label for="room-form-type">Room Type</label>
+          <select id="room-form-type" class="form-control">
+            <option value="lecture">Lecture Hall / Classroom</option>
+            <option value="lab">Computer / Science Laboratory</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="room-form-capacity">Maximum Seating Capacity</label>
+          <input type="number" id="room-form-capacity" class="form-control" min="5" max="250" value="40" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal="modal-room">Cancel</button>
+          <button type="submit" class="btn btn-indigo">Save Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Section -->
+  <div class="modal" id="modal-section" style="display: none;">
+    <div class="modal-header">
+      <h3 id="modal-section-title">Add Student Batch</h3>
+      <button class="modal-close" data-modal="modal-section">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-section">
+        <input type="hidden" id="section-form-id">
+        <div class="form-group">
+          <label for="section-form-dept">Department / School</label>
+          <select id="section-form-dept" class="form-control" required>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Electrical Engineering">Electrical Engineering</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+            <option value="Software Engineering">Software Engineering</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="section-form-batch">Intake Batch (Year)</label>
+          <input type="number" id="section-form-batch" class="form-control" min="2015" max="2035" value="2024" required>
+        </div>
+        <div class="form-group">
+          <label for="section-form-semester">Current Semester</label>
+          <select id="section-form-semester" class="form-control" required>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+            <option value="7">Semester 7</option>
+            <option value="8">Semester 8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="section-form-field">Specialization / Field</label>
+          <select id="section-form-field" class="form-control" required>
+            <option value="General">General</option>
+            <option value="CS">Computer Science (CS)</option>
+            <option value="AI">Artificial Intelligence (AI)</option>
+            <option value="DS">Data Science (DS)</option>
+            <option value="SE">Software Engineering (SE)</option>
+            <option value="Power">Power</option>
+            <option value="Telecom">Telecom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="section-form-letter">Section Letter</label>
+          <select id="section-form-letter" class="form-control">
+            <option value="">None (Single Section)</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="section-form-size">Intake Capacity (Students)</label>
+          <input type="number" id="section-form-size" class="form-control" min="5" max="150" value="35" required>
+        </div>
+        <div class="form-group">
+          <label for="section-form-name">Section Code (Auto-Generated Preview)</label>
+          <input type="text" id="section-form-name" class="form-control" placeholder="e.g. BSCS-2A" required>
+          <small style="font-size: 0.75rem; color: var(--color-text-muted); display: block; margin-top: 4px;">Feel free to customize this display code if needed.</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal="modal-section">Cancel</button>
+          <button type="submit" class="btn btn-indigo">Save Batch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Course -->
+  <div class="modal" id="modal-course" style="display: none;">
+    <div class="modal-header">
+      <h3 id="modal-course-title">Add Course</h3>
+      <button class="modal-close" data-modal="modal-course">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-course">
+        <input type="hidden" id="course-form-id">
+        <div class="form-group">
+          <label for="course-form-code">Course Code</label>
+          <input type="text" id="course-form-code" class="form-control" placeholder="CS-202" required>
+        </div>
+        <div class="form-group">
+          <label for="course-form-name">Course Title</label>
+          <input type="text" id="course-form-name" class="form-control" placeholder="Object Oriented Programming" required>
+        </div>
+        <div class="form-group">
+          <label for="course-form-sessions">Classes/Sessions per Week</label>
+          <input type="number" id="course-form-sessions" class="form-control" min="1" max="6" value="2" required>
+        </div>
+        <div class="form-group">
+          <label for="course-form-roomtype">Required Room Type</label>
+          <select id="course-form-roomtype" class="form-control">
+            <option value="lecture">Lecture Classroom</option>
+            <option value="lab">Specialized Laboratory</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="course-form-teacher">Assigned Instructor</label>
+          <select id="course-form-teacher" class="form-control" required>
+            <!-- Filled dynamically -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assigned Student Batches</label>
+          <div class="checkbox-group-container" id="course-form-sections-checkboxes">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-modal="modal-course">Cancel</button>
+          <button type="submit" class="btn btn-indigo">Save Course</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Session Manually / Drag-and-Drop Edit -->
+  <div class="modal" id="modal-session" style="display: none;">
+    <div class="modal-header">
+      <h3 id="modal-session-title">Schedule Class Session</h3>
+      <button class="modal-close" data-modal="modal-session">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-session">
+        <input type="hidden" id="session-form-id">
+        <div class="form-group">
+          <label for="session-form-course">Select Course</label>
+          <select id="session-form-course" class="form-control" required>
+            <!-- Filled dynamically -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="session-form-room">Assigned Room</label>
+          <select id="session-form-room" class="form-control" required>
+            <!-- Filled dynamically -->
+          </select>
+        </div>
+        <div class="grid-form-row">
+          <div class="form-group">
+            <label for="session-form-day">Scheduled Day</label>
+            <select id="session-form-day" class="form-control" required>
+              <!-- Filled dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="session-form-slot">Time Period</label>
+            <select id="session-form-slot" class="form-control" required>
+              <!-- Filled dynamically -->
+            </select>
+          </div>
+        </div>
+        
+        <div id="session-clash-warning" class="modal-warning-box" style="display: none;">
+          <i data-lucide="alert-triangle" class="text-danger"></i>
+          <p id="session-clash-warning-text">Clash detected with this time slot!</p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-danger" id="btn-session-delete" style="margin-right: auto; display: none;">
+            <i data-lucide="trash-2"></i> Delete
+          </button>
+          <button type="button" class="btn btn-outline" data-modal="modal-session">Cancel</button>
+          <button type="submit" class="btn btn-indigo" id="btn-session-submit">Schedule Session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Floating AI Copilot Toggle Button -->
+  <button class="copilot-toggle-btn" id="btn-copilot-toggle" title="Open AI Copilot">
+    <i data-lucide="message-square"></i>
+    <span class="badge badge-danger" id="copilot-unread-badge" style="display: none;">1</span>
+  </button>
+
+  <!-- Collapsible AI Copilot Panel -->
+  <aside class="copilot-panel" id="copilot-panel">
+    <!-- Copilot Header -->
+    <div class="copilot-header">
+      <div class="copilot-brand">
+        <div class="copilot-icon-wrapper animate-pulse">
+          <i data-lucide="bot"></i>
+        </div>
+        <div>
+          <h4 style="margin: 0; font-size: 15px; font-weight: 700;">Scheduler Copilot</h4>
+          <span class="copilot-status" id="copilot-status-lbl" style="font-size: 11px; color: var(--color-text-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span class="status-indicator-dot active" style="width: 6px; height: 6px;"></span> Local Mode
+          </span>
+        </div>
+      </div>
+      <div class="copilot-header-actions">
+        <button class="btn-icon" id="btn-copilot-settings" title="Copilot Settings" style="padding: 4px;"><i data-lucide="settings" style="width: 16px; height: 16px;"></i></button>
+        <button class="btn-icon text-danger" id="btn-copilot-close" title="Close Panel" style="padding: 4px;"><i data-lucide="x" style="width: 16px; height: 16px;"></i></button>
+      </div>
+    </div>
+
+    <!-- Collapsible Settings Drawer -->
+    <div class="copilot-settings-drawer" id="copilot-settings-drawer" style="display: none;">
+      <h5 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--indigo-primary);">AI Copilot Settings</h5>
+      <div class="form-group">
+        <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted);">AI Provider</label>
+        <select id="copilot-provider" class="form-control" style="font-size: 13px; padding: 6px 10px; height: auto; background: var(--bg-card); border-color: var(--border-light);">
+          <option value="local">Local Command Interpreter (No Key)</option>
+          <option value="gemini">Gemini API (Recommended)</option>
+          <option value="openai">OpenAI API</option>
+          <option value="openrouter">OpenRouter API</option>
+        </select>
+      </div>
+      <div id="api-key-form-group" style="display: none; margin-top: 10px;">
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted);">API Secret Key</label>
+          <input type="password" id="copilot-api-key" class="form-control" style="font-size: 13px; padding: 6px 10px; height: auto; background: var(--bg-card); border-color: var(--border-light);" placeholder="Paste API Key here...">
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted);">AI Model Variant</label>
+          <select id="copilot-model" class="form-control" style="font-size: 13px; padding: 6px 10px; height: auto; background: var(--bg-card); border-color: var(--border-light);">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-indigo btn-block" id="btn-save-copilot-settings" style="margin-top: 12px; font-size: 12px; padding: 6px 12px;">Save API Configurations</button>
+    </div>
+
+    <!-- Chat Logs Area -->
+    <div class="copilot-chat-history" id="copilot-chat-history">
+      <!-- Bubbles filled dynamically -->
+    </div>
+
+    <!-- Suggestion Chips -->
+    <div class="copilot-suggestions" id="copilot-suggestions">
+      <button class="suggestion-chip" data-cmd="Move CS-101 to Monday Period 1">Move CS-101 to Mon P1</button>
+      <button class="suggestion-chip" data-cmd="Make Dr. Alice Smith unavailable on Friday Period 5">Block Dr. Alice Fri P5</button>
+      <button class="suggestion-chip" data-cmd="Run auto-scheduler">Optimize Schedule</button>
+      <button class="suggestion-chip" data-cmd="Audit conflicts">Check Conflicts</button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="copilot-input-area">
+      <button class="copilot-mic-btn" id="btn-copilot-mic" title="Voice Assistant (Click to Speak)"><i data-lucide="mic" style="width: 14px; height: 14px;"></i></button>
+      <textarea id="copilot-input-text" class="copilot-input-field" placeholder="Ask or command the scheduler..." rows="1"></textarea>
+      <button class="copilot-send-btn" id="btn-copilot-send"><i data-lucide="send" style="width: 14px; height: 14px;"></i></button>
+    </div>
+  </aside>
+
+  <!-- ES6 Main Module Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
